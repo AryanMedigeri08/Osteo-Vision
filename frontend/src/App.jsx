@@ -592,10 +592,10 @@ function App() {
             </div>
 
             <div className="doc-profile">
-              <img src="/img/pigeon_doc.png" className="doc-avatar" alt="Dr. Aryan Medigeri" />
+              <img src="/img/sakshi.jpeg" className="doc-avatar" alt="Dr. Sakshi Sharan" />
               <div className="doc-info">
-                <div className="doc-name">Dr. Aryan Medigeri</div>
-                <div className="doc-role">Orthopedic Surgeon</div>
+                <div className="doc-name">Dr. Sakshi Sharan</div>
+                <div className="doc-role">Radiologist</div>
               </div>
               <span className="doc-arrow">
                 <Icons.ChevronDown style={{ width: 14, height: 14, color: 'var(--text-muted)' }} />
@@ -638,14 +638,14 @@ function App() {
               setShowProfileDropdown(!showProfileDropdown);
               setShowNotifDropdown(false);
             }}>
-              <div className="user-avatar">AM</div>
+              <div className="user-avatar">SS</div>
               <span className="user-arrow">
                 <Icons.ChevronDown style={{ width: 14, height: 14, color: 'var(--text-muted)' }} />
               </span>
 
               {showProfileDropdown && (
                 <div className="dropdown-menu profile-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="dropdown-header">Dr. Aryan Medigeri</div>
+                  <div className="dropdown-header">Dr. Sakshi Sharan</div>
                   <div className="profile-dropdown-item" onClick={() => { setActiveTab('Settings'); setShowProfileDropdown(false); }}>
                     <Icons.Settings style={{ width: 16, height: 16 }} />
                     Settings
@@ -1288,7 +1288,7 @@ function App() {
                 <div style={{ padding: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
                   <p style={{ marginBottom: '0.5rem' }}><strong>Model Version:</strong> Xception-FT v2.1 (Deep Learning Classification)</p>
                   <p style={{ marginBottom: '0.5rem' }}><strong>ROI Extractor:</strong> Deterministic Classical Image Pipeline</p>
-                  <p style={{ marginBottom: '0.5rem' }}><strong>Doctor Assigned:</strong> Dr. Aryan Medigeri</p>
+                  <p style={{ marginBottom: '0.5rem' }}><strong>Doctor Assigned:</strong> Dr. Sakshi Sharan</p>
                   <p><strong>Status:</strong> Connected to Local Server (Port 8000)</p>
                 </div>
               </div>
