@@ -592,7 +592,7 @@ function App() {
             </div>
 
             <div className="doc-profile">
-              <img src="public/img/pigeon_doc.png" className="doc-avatar" alt="Dr. Aryan Medigeri" />
+              <img src="/img/pigeon_doc.png" className="doc-avatar" alt="Dr. Aryan Medigeri" />
               <div className="doc-info">
                 <div className="doc-name">Dr. Aryan Medigeri</div>
                 <div className="doc-role">Orthopedic Surgeon</div>
