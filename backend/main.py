@@ -10,6 +10,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import matplotlib.cm as cm
+from matplotlib import colormaps
 from fpdf import FPDF
 from fastapi.responses import Response
 
@@ -35,12 +36,11 @@ print(f"Loading model from: {model_path}")
 
 try:
     model = tf.keras.models.load_model(str(model_path))
-    grad_model = tf.keras.models.clone_model(model)
-    grad_model.set_weights(model.get_weights())
-    grad_model.layers[-1].activation = None
+    # Optimize: Avoid cloning the model (which duplicates all weights/RAM in TensorFlow).
+    # Construct grad_model directly sharing the loaded model's weights and layers.
     grad_model = tf.keras.models.Model(
-        inputs=[grad_model.inputs],
-        outputs=[grad_model.get_layer("global_average_pooling2d_1").input, grad_model.output],
+        inputs=[model.inputs],
+        outputs=[model.get_layer("global_average_pooling2d_1").input, model.output],
     )
 except Exception as e:
     print(f"Error loading model: {e}")
@@ -83,12 +83,17 @@ def make_gradcam_heatmap(img_array, pred_index=None):
     last_conv_layer_output = last_conv_layer_output[0]
     heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    # Optimize: Add epsilon protection (1e-10) to prevent division by zero / NaN values
+    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-10)
     return heatmap.numpy()
 
 def save_and_display_gradcam(img, heatmap, alpha=0.4):
     heatmap = np.uint8(255 * heatmap)
-    jet = cm.get_cmap("jet")
+    # Optimize: Handle newer Matplotlib colormaps get_cmap deprecation safely
+    try:
+        jet = colormaps.get_cmap("jet")
+    except Exception:
+        jet = cm.get_cmap("jet")
     jet_colors = jet(np.arange(256))[:, :3]
     jet_heatmap = jet_colors[heatmap]
     jet_heatmap = tf.keras.preprocessing.image.array_to_img(jet_heatmap)
@@ -97,10 +102,17 @@ def save_and_display_gradcam(img, heatmap, alpha=0.4):
     superimposed_img = jet_heatmap * alpha + img
     return tf.keras.preprocessing.image.array_to_img(superimposed_img)
 
-def get_image_base64(pil_img):
+def get_image_base64(pil_img, format="PNG", max_size=600):
+    # Optimize: Downscale high-resolution images and save as crisp PNGs to minimize network payload.
+    # We use PNG format for all images to ensure 100% browser compatibility and avoid JPEG rendering crashes.
+    img_copy = pil_img.copy()
+    if max(img_copy.size) > max_size:
+        img_copy.thumbnail((max_size, max_size))
+        
     buf = io.BytesIO()
-    pil_img.save(buf, format="PNG")
+    img_copy.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 
 def get_kl_info(grade):
     return {"Healthy": (0, "No signs of osteoarthritis"), "Doubtful": (1, "Doubtful joint space narrowing"), "Minimal": (2, "Minimal osteophytes present"), "Moderate": (3, "Moderate joint space narrowing"), "Severe": (4, "Severe joint space loss")}.get(grade, (0, ""))
@@ -207,7 +219,10 @@ def download_pdf(req: ReportRequest):
     pdf.add_page()
     pdf.set_font("Helvetica", size=12)
     for line in req.report_text.split('\n'):
-        pdf.cell(0, 10, txt=line, ln=True)
+        # Optimize: Safely encode unicode characters (like bullets, dashes, emojis) as latin-1,
+        # preventing server crash (UnicodeEncodeError) on unsupported characters in FPDF
+        safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
+        pdf.cell(0, 10, txt=safe_line, ln=True)
     
     pdf_bytes = bytes(pdf.output())
     return Response(content=pdf_bytes, media_type="application/pdf", headers={

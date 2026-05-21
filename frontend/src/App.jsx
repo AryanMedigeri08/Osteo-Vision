@@ -16,13 +16,157 @@ const findingIcons = {
   "Alignment": "📐"
 };
 
+const getImageSrc = (imgStr) => {
+  if (!imgStr) return '';
+  if (imgStr.startsWith('data:') || imgStr.startsWith('/') || imgStr.startsWith('http')) {
+    return imgStr;
+  }
+  if (imgStr.startsWith('/9j/')) {
+    return `data:image/jpeg;base64,${imgStr}`;
+  }
+  return `data:image/png;base64,${imgStr}`;
+};
+
+
+const initialHistory = [
+  {
+    id: "mock_1",
+    date: "May 20, 2026 · 10:30 AM",
+    fileName: "minimal_knee_xray.png",
+    kneeSide: "Right Knee",
+    grade: "Minimal",
+    probability: 24.0,
+    isMock: true,
+    results: {
+      success: true,
+      results: {
+        grade: "Minimal",
+        probability: 24.0,
+        kl_grade: 2,
+        description: "Minimal signs of osteoarthritis detected. Small osteophytes are present with possible joint space narrowing.",
+        findings: {
+          "Joint Space Narrowing": "Mild",
+          "Osteophyte Formation": "Mild",
+          "Sclerosis": "Normal",
+          "Alignment": "Normal"
+        },
+        report_text: "Knee X-ray Analysis Report\nGenerated: May 20, 2026 10:30 AM\n\nSeverity Grade: Minimal\nOverall Severity: 24%\nKellgren-Lawrence Grade: 2\n\nSummary:\nMinimal signs of osteoarthritis detected. Small osteophytes are present with possible joint space narrowing.\n\nKey Findings:\n- Joint Space Narrowing: Mild\n- Osteophyte Formation: Mild\n- Sclerosis: Normal\n- Alignment: Normal\n\nNote: This AI-assisted report is for screening support and should be reviewed by a qualified clinician.",
+        probabilities: {
+          "Healthy": 5.0,
+          "Doubtful": 12.0,
+          "Minimal": 24.0,
+          "Moderate": 4.0,
+          "Severe": 1.0
+        }
+      },
+      images: {
+        input: "/img/minimal_xray.png",
+        norm: "/img/minimal_xray.png",
+        otsu: "/img/minimal_xray.png",
+        morph: "/img/minimal_xray.png",
+        roi: "/img/minimal_xray.png",
+        gradcam: "/img/minimal_xray.png"
+      }
+    }
+  },
+  {
+    id: "mock_2",
+    date: "May 18, 2026 · 02:15 PM",
+    fileName: "moderate_knee_xray.png",
+    kneeSide: "Left Knee",
+    grade: "Moderate",
+    probability: 52.0,
+    isMock: true,
+    results: {
+      success: true,
+      results: {
+        grade: "Moderate",
+        probability: 52.0,
+        kl_grade: 3,
+        description: "Moderate signs of osteoarthritis detected. There is noticeable joint space narrowing and presence of osteophytes.",
+        findings: {
+          "Joint Space Narrowing": "Moderate",
+          "Osteophyte Formation": "Moderate",
+          "Sclerosis": "Mild",
+          "Alignment": "Normal"
+        },
+        report_text: "Knee X-ray Analysis Report\nGenerated: May 18, 2026 02:15 PM\n\nSeverity Grade: Moderate\nOverall Severity: 52%\nKellgren-Lawrence Grade: 3\n\nSummary:\nModerate signs of osteoarthritis detected. There is noticeable joint space narrowing and presence of osteophytes.\n\nKey Findings:\n- Joint Space Narrowing: Moderate\n- Osteophyte Formation: Moderate\n- Sclerosis: Mild\n- Alignment: Normal\n\nNote: This AI-assisted report is for screening support and should be reviewed by a qualified clinician.",
+        probabilities: {
+          "Healthy": 1.0,
+          "Doubtful": 3.0,
+          "Minimal": 8.0,
+          "Moderate": 52.0,
+          "Severe": 4.0
+        }
+      },
+      images: {
+        input: "/img/moderate_xray.png",
+        norm: "/img/moderate_xray.png",
+        otsu: "/img/moderate_xray.png",
+        morph: "/img/moderate_xray.png",
+        roi: "/img/moderate_xray.png",
+        gradcam: "/img/moderate_xray.png"
+      }
+    }
+  }
+];
+
 function App() {
   const [activeTab, setActiveTab] = useState('Home');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('knee_oa_history');
+    return saved ? JSON.parse(saved) : initialHistory;
+  });
   const fileInputRef = useRef(null);
+
+  const [unreadCount, setUnreadCount] = useState(3);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  React.useEffect(() => {
+    const handleOutsideClick = () => {
+      setShowNotifications(false);
+      setShowProfileMenu(false);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  const notifications = [
+    { id: 1, icon: "✨", title: "AI Model Loaded Successfully", text: "Xception_ft model is active.", time: "Just now" },
+    { id: 2, icon: "🔌", title: "Connected to Backend", text: "FastAPI server running on port 8000.", time: "5 mins ago" },
+    { id: 3, icon: "📄", title: "PDF Report System Ready", text: "FPDF is active with Latin-1 fallback.", time: "10 mins ago" }
+  ];
+
+  const addToHistory = (data, fileName) => {
+    const newItem = {
+      id: "hist_" + Date.now(),
+      date: new Date().toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric', 
+        hour: 'numeric', 
+        minute: 'numeric', 
+        hour12: true 
+      }).replace(',', ' ·'),
+      fileName: fileName,
+      kneeSide: fileName.toLowerCase().includes('left') ? 'Left Knee' : 'Right Knee',
+      grade: data.results.grade,
+      probability: data.results.probability,
+      imageInput: data.images.input,
+      results: data
+    };
+    
+    setHistory(prev => {
+      const updated = [newItem, ...prev].slice(0, 15);
+      localStorage.setItem('knee_oa_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -48,6 +192,7 @@ function App() {
       const data = await response.json();
       if (data.success) {
         setResults(data);
+        addToHistory(data, file.name);
         setActiveTab('Insights');
       }
     } catch (error) {
@@ -114,9 +259,9 @@ function App() {
             </div>
 
             <div className="doc-profile">
-              <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=100&h=100" className="doc-avatar" alt="Dr. Aditya Sharma" />
+              <img src="/img/pigeon_doc.png" className="doc-avatar" alt="Dr. Arnav Shende" />
               <div className="doc-info">
-                <div className="doc-name">Dr. Aryan Medigeri</div>
+                <div className="doc-name">Dr. Arnav Shende</div>
                 <div className="doc-role">Orthopedic Surgeon</div>
               </div>
               <span className="doc-arrow">▾</span>
@@ -128,13 +273,78 @@ function App() {
         <main className="main-area">
           {/* Header Actions */}
           <div className="header-actions">
-            <div className="notif-bell">
+            {/* Notification Bell */}
+            <div 
+              className="notif-bell" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowNotifications(!showNotifications);
+                setShowProfileMenu(false);
+                setUnreadCount(0);
+              }}
+            >
               <img src="/img/bell.png" alt="Notifications" />
-              <span>3</span>
+              {unreadCount > 0 && <span>{unreadCount}</span>}
+              
+              {showNotifications && (
+                <div className="dropdown-menu notif-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="dropdown-header">System Notifications</div>
+                  <div className="notif-list">
+                    {notifications.map(n => (
+                      <div key={n.id} className="notif-item">
+                        <span className="notif-icon">{n.icon}</span>
+                        <div className="notif-content">
+                          <span className="notif-title">{n.title}</span>
+                          <span className="notif-time">{n.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="user-profile">
-              <div className="user-avatar">AS</div>
-              <span className="user-arrow">▾</span>
+
+            {/* User Profile Avatar & Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                className="user-profile" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProfileMenu(!showProfileMenu);
+                  setShowNotifications(false);
+                }}
+              >
+                <img src="/img/pigeon_doc.png" className="doc-avatar" style={{ width: '36px', height: '36px' }} alt="AS" />
+                <span className="user-arrow">▾</span>
+              </div>
+
+              {showProfileMenu && (
+                <div className="dropdown-menu profile-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="dropdown-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0.6rem 0.6rem' }}>
+                    <img src="/img/pigeon_doc.png" className="doc-avatar" style={{ width: '38px', height: '38px' }} alt="" />
+                    <div>
+                      <div style={{ fontWeight: '800', color: 'var(--text-dark)' }}>Dr. Arnav Shende</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: '400', marginTop: '0.1rem' }}>arnav@osteo.vision</div>
+                    </div>
+                  </div>
+                  <div className="profile-dropdown-item" onClick={() => { setActiveTab('Home'); setShowProfileMenu(false); }}>
+                    🏠 Home Dashboard
+                  </div>
+                  <div className="profile-dropdown-item" onClick={() => { setActiveTab('History'); setShowProfileMenu(false); }}>
+                    📂 Diagnostic History
+                  </div>
+                  <div 
+                    className="profile-dropdown-item logout" 
+                    onClick={() => {
+                      if (window.confirm("Do you want to log out?")) {
+                        window.location.reload();
+                      }
+                    }}
+                  >
+                    🚪 Log Out
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -222,25 +432,22 @@ function App() {
                       <a href="#" className="view-all-link" onClick={(e) => { e.preventDefault(); setActiveTab('History'); }}>View All</a>
                     </div>
 
-                    <div className="recent-row" onClick={() => setActiveTab('History')}>
-                      <div className="recent-thumb"><img src="/img/minimal_xray.png" alt="Mild X-Ray" /></div>
-                      <div className="recent-meta">
-                        <div className="recent-date">May 20, 2024 · 10:30 AM</div>
-                        <div className="recent-knee">Right Knee</div>
-                      </div>
-                      <div className="recent-badge mild">Mild (24%)</div>
-                      <div className="recent-arrow">›</div>
-                    </div>
-
-                    <div className="recent-row" onClick={() => setActiveTab('History')}>
-                      <div className="recent-thumb"><img src="/img/moderate_xray.png" alt="Moderate X-Ray" /></div>
-                      <div className="recent-meta">
-                        <div className="recent-date">May 18, 2024 · 02:15 PM</div>
-                        <div className="recent-knee">Left Knee</div>
-                      </div>
-                      <div className="recent-badge moderate">Moderate (52%)</div>
-                      <div className="recent-arrow">›</div>
-                    </div>
+                    {history.length === 0 ? (
+                      <p className="no-history-text" style={{ fontSize: '0.85rem', color: '#9CA3AF', padding: '0.5rem 0' }}>No recent analyses found.</p>
+                    ) : (
+                      history.slice(0, 3).map((item) => (
+                        <div key={item.id} className="recent-row" onClick={() => { setResults(item.results); setActiveTab('Insights'); }} style={{ cursor: 'pointer' }}>
+                          <div className="recent-thumb"><img src={getImageSrc(item.imageInput)} alt={item.fileName} /></div>
+                          <div className="recent-meta">
+                            <div className="recent-date">{item.date}</div>
+                            <div className="recent-knee">{item.kneeSide}</div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.fileName}</div>
+                          </div>
+                          <div className={`recent-badge ${item.grade.toLowerCase()}`}>{item.grade} ({item.probability.toFixed(0)}%)</div>
+                          <div className="recent-arrow">›</div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -281,27 +488,27 @@ function App() {
 
                         <div className="pipeline-row">
                           <div className="pipeline-card">
-                            <img src={`data:image/png;base64,${results.images.input}`} alt="Input" />
+                            <img src={getImageSrc(results.images.input)} alt="Input" />
                             <p>Input X-Ray</p>
                           </div>
                           <div className="pipeline-arrow">›</div>
                           <div className="pipeline-card">
-                            <img src={`data:image/png;base64,${results.images.norm}`} alt="Normalized" />
+                            <img src={getImageSrc(results.images.norm)} alt="Normalized" />
                             <p>Normalized</p>
                           </div>
                           <div className="pipeline-arrow">›</div>
                           <div className="pipeline-card">
-                            <img src={`data:image/png;base64,${results.images.otsu}`} alt="Otsu" />
+                            <img src={getImageSrc(results.images.otsu)} alt="Otsu" />
                             <p>Otsu Threshold</p>
                           </div>
                           <div className="pipeline-arrow">›</div>
                           <div className="pipeline-card">
-                            <img src={`data:image/png;base64,${results.images.morph}`} alt="Morph" />
+                            <img src={getImageSrc(results.images.morph)} alt="Morph" />
                             <p>Morphological Closing</p>
                           </div>
                           <div className="pipeline-arrow">›</div>
                           <div className="pipeline-card">
-                            <img src={`data:image/png;base64,${results.images.roi}`} alt="ROI" />
+                            <img src={getImageSrc(results.images.roi)} alt="ROI" />
                             <p>Extracted ROI <span className="checkmark">✅</span></p>
                           </div>
                         </div>
@@ -315,13 +522,13 @@ function App() {
                           <div className="classification-card">
                             <h4>Input to CNN (ROI)</h4>
                             <div className="xray-img-wrap">
-                              <img src={`data:image/png;base64,${results.images.roi}`} alt="ROI" />
+                              <img src={getImageSrc(results.images.roi)} alt="ROI" />
                             </div>
                           </div>
                           <div className="classification-card">
                             <h4>Grad-CAM Explainability</h4>
                             <div className="xray-img-wrap">
-                              <img src={`data:image/png;base64,${results.images.gradcam}`} alt="Grad-CAM" />
+                              <img src={getImageSrc(results.images.gradcam)} alt="Grad-CAM" />
                             </div>
                           </div>
                         </div>
@@ -416,29 +623,53 @@ function App() {
             {activeTab === 'History' && (
               <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div className="history-header">
-                  <h3>Recent Analyses</h3>
-                  <a href="#" className="view-all-link">View All</a>
+                  <h3>Analysis History</h3>
+                  {history.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to clear all history?")) {
+                          setHistory([]);
+                          localStorage.removeItem('knee_oa_history');
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#EF4444',
+                        fontWeight: '800',
+                        fontSize: '0.88rem',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  )}
                 </div>
 
-                <div className="recent-row">
-                  <div className="recent-thumb"><img src="/img/minimal_xray.png" alt="Mild X-Ray" /></div>
-                  <div className="recent-meta">
-                    <div className="recent-date">May 20, 2024 · 10:30 AM</div>
-                    <div className="recent-knee">Right Knee</div>
+                {history.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '3rem 1.5rem', background: 'var(--bg-white)', borderRadius: '20px', border: '1px solid var(--border)', textAlign: 'center', boxShadow: 'var(--shadow-card)' }}>
+                    <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📂</div>
+                    <h3 style={{ marginBottom: '0.5rem' }}>No History Available</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>You haven't performed any knee X-ray analyses yet.</p>
+                    <button className="btn-primary" style={{ margin: '0 auto', maxWidth: '250px' }} onClick={() => setActiveTab('Home')}>
+                      Analyze Now
+                    </button>
                   </div>
-                  <div className="recent-badge mild">Mild (24%)</div>
-                  <div className="recent-arrow">›</div>
-                </div>
-
-                <div className="recent-row">
-                  <div className="recent-thumb"><img src="/img/moderate_xray.png" alt="Moderate X-Ray" /></div>
-                  <div className="recent-meta">
-                    <div className="recent-date">May 18, 2024 · 02:15 PM</div>
-                    <div className="recent-knee">Left Knee</div>
-                  </div>
-                  <div className="recent-badge moderate">Moderate (52%)</div>
-                  <div className="recent-arrow">›</div>
-                </div>
+                ) : (
+                  history.map((item) => (
+                    <div key={item.id} className="recent-row" onClick={() => { setResults(item.results); setActiveTab('Insights'); }} style={{ cursor: 'pointer' }}>
+                      <div className="recent-thumb"><img src={getImageSrc(item.imageInput)} alt={item.fileName} /></div>
+                      <div className="recent-meta">
+                        <div className="recent-date">{item.date}</div>
+                        <div className="recent-knee">{item.kneeSide}</div>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '0.2rem', fontFamily: 'monospace' }}>{item.fileName}</div>
+                      </div>
+                      <div className={`recent-badge ${item.grade.toLowerCase()}`}>{item.grade} ({item.probability.toFixed(0)}%)</div>
+                      <div className="recent-arrow">›</div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 

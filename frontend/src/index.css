@@ -1159,3 +1159,112 @@ body {
         max-width: 100% !important;
     }
 }
+
+/* ── INTERACTIVE DROPDOWNS ── */
+.dropdown-menu {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    width: 320px;
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    animation: dropdownFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-header {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.3rem;
+    color: var(--text-dark);
+}
+
+.notif-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.notif-item {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.notif-item:hover {
+    background: var(--bg-light);
+    transform: translateX(2px);
+}
+
+.notif-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.notif-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.notif-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.notif-time {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+}
+
+/* Profile Dropdown Specifics */
+.profile-dropdown {
+    width: 240px;
+    top: 48px;
+}
+
+.profile-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.profile-dropdown-item:hover {
+    background: var(--bg-light);
+}
+
+.profile-dropdown-item.logout {
+    color: #ef4444;
+    border-top: 1px solid var(--border);
+    margin-top: 0.4rem;
+    padding-top: 0.8rem;
+    border-radius: 0 0 10px 10px;
+}
